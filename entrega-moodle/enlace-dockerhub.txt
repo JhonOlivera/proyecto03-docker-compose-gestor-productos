@@ -1,0 +1,10 @@
+Autores:
+Jhon Edwin Olivera Duarte
+Yaritxa Duarte Urueña
+Juan Andres Bejarano Garzón
+Ana Maria Tique Manrique
+Janner Torres Carvajal
+
+Imagen en Docker Hub: https://hub.docker.com/r/jhonolivera/gestor-productos
+
+docker pull jhonolivera/gestor-productos:1.0
