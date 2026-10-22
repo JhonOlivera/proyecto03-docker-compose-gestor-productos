@@ -35,6 +35,7 @@ Proyecto 03 — Infraestructura y Seguridad Computacional.
    Red interna: gestor-net
    Volúmenes:  mysql-data (datos de MySQL)
                api-logs   (logs de la API)
+               db-backups (copias de seguridad de la BD)
 ```
 
 - **db**: MySQL 8.4, almacena los datos de la aplicación.
@@ -90,6 +91,7 @@ Proyecto 03 — Infraestructura y Seguridad Computacional.
 |--------------|-------------------------------------------|
 | `mysql-data` | Persistencia de los datos de MySQL        |
 | `api-logs`   | Logs generados por la aplicación (`/app/logs`) |
+| `db-backups` | Copias de seguridad de la base de datos (`/backups`) |
 
 ## Red
 
@@ -108,6 +110,10 @@ Enlace de la imagen en Docker Hub: https://hub.docker.com/r/jhonolivera/gestor-p
 ```bash
 docker pull jhonolivera/gestor-productos:1.0
 ```
+
+## Repositorio en GitHub
+
+https://github.com/JhonOlivera/proyecto03-docker-compose-gestor-productos
 
 ## Autoría
 
