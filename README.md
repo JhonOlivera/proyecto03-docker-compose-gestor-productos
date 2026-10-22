@@ -112,3 +112,7 @@ docker pull jhonolivera/gestor-productos:1.0
 ## Autoría
 
 Jhon Olivera — jhon.olivera@estudiantesunibague.edu.co
+Yaritxa Duarte Urueña- yaritxa.duarte@estudiantesunibague.edu.co
+Ana Maria Tique Manrique- ana.tique1@estudiantesunibague..edu.co
+Juan Andres Bejarano Garzón- juan.bejarano1@estudiantesunibague.edu.co
+Janner Stiven Torres Carvajal-janner.torres@estudiantesunibague.edu.co
