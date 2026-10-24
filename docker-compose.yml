@@ -1,3 +1,4 @@
+
 services:
   db:
     image: mysql:8.4
@@ -29,6 +30,20 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - gestor-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080
+        VITE_PRODUCTS_ENDPOINT: /api/productos
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
     networks:
       - gestor-net
 

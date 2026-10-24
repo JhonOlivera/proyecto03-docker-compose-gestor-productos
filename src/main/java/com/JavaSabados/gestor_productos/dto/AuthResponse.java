@@ -2,7 +2,7 @@ package com.JavaSabados.gestor_productos.dto;
 
 public class AuthResponse {
     //atributo
-    private String token;
+    private final String token;
     public AuthResponse(String token){
     this.token=token;
 }

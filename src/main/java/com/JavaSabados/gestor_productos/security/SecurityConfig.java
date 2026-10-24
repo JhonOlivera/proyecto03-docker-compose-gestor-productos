@@ -1,4 +1,7 @@
+
 package com.JavaSabados.gestor_productos.security;
+
+import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +14,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
@@ -24,18 +30,53 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/productos/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/productos/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
-                )
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .cors(cors -> {})
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/v3/api-docs"
+                ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/productos/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/productos/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            )
+            .sessionManagement(sm ->
+                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .addFilterBefore(
+                jwtAuthFilter,
+                UsernamePasswordAuthenticationFilter.class
+            );
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        configuration.setAllowedOrigins(
+            List.of("http://localhost:5173")
+        );
+        configuration.setAllowedMethods(
+            List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        );
+        configuration.setAllowedHeaders(
+            List.of("Authorization", "Content-Type", "Accept")
+        );
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+            new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
     }
 
     @Bean
@@ -44,7 +85,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }
