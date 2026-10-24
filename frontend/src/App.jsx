@@ -1,13 +1,12 @@
-
 import { useEffect, useMemo, useState } from "react";
 import {
   Boxes,
   Search,
   Plus,
-  Pencil,
-  Trash2,
   LogOut,
   Package,
+  Tag,
+  Tags,
   TrendingUp,
   CircleDollarSign,
   AlertTriangle,
@@ -18,25 +17,35 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-import { apiRequest, PRODUCTS_ENDPOINT } from "./api.js";
+import {
+  apiRequest,
+  PRODUCTS_ENDPOINT,
+  CATEGORIES_ENDPOINT,
+  BRANDS_ENDPOINT,
+} from "./api.js";
 
 const emptyProduct = {
   nombre: "",
   descripcion: "",
   precio: "",
   stock: "",
+  categoriaId: "",
+  marcaId: "",
 };
 
-function normalizeProducts(payload) {
+// Convierte cualquier forma de respuesta en un arreglo
+function normalizeList(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.content)) return payload.content;
   if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.productos)) return payload.productos;
   return [];
 }
 
-function ProductForm({ initial, onCancel, onSave, busy }) {
-  const [form, setForm] = useState(initial || emptyProduct);
+// ---------------------------------------------------------------
+// Formulario de producto (6 campos del POST)
+// ---------------------------------------------------------------
+function ProductForm({ categories, brands, onCancel, onSave, busy }) {
+  const [form, setForm] = useState(emptyProduct);
 
   function update(field, value) {
     setForm((previous) => ({
@@ -49,9 +58,12 @@ function ProductForm({ initial, onCancel, onSave, busy }) {
     event.preventDefault();
 
     onSave({
-      ...form,
+      nombre: form.nombre.trim(),
+      descripcion: form.descripcion,
       precio: Number(form.precio),
       stock: Number(form.stock),
+      categoriaId: Number(form.categoriaId),
+      marcaId: Number(form.marcaId),
     });
   }
 
@@ -66,14 +78,8 @@ function ProductForm({ initial, onCancel, onSave, busy }) {
         <div className="modal-heading">
           <div>
             <p className="eyebrow">CATÁLOGO</p>
-            <h2>
-              {initial?.id || initial?.idProducto
-                ? "Editar producto"
-                : "Nuevo producto"}
-            </h2>
-            <p className="muted">
-              Completa la información del producto.
-            </p>
+            <h2>Nuevo producto</h2>
+            <p className="muted">Completa la información del producto.</p>
           </div>
 
           <button
@@ -90,19 +96,17 @@ function ProductForm({ initial, onCancel, onSave, busy }) {
           Nombre del producto
           <input
             required
-            value={form.nombre ?? ""}
+            value={form.nombre}
             onChange={(event) => update("nombre", event.target.value)}
-            placeholder="Ej. Teclado inalámbrico"
+            placeholder="Ej. Proteína Whey"
           />
         </label>
 
         <label>
           Descripción
           <textarea
-            value={form.descripcion ?? ""}
-            onChange={(event) =>
-              update("descripcion", event.target.value)
-            }
+            value={form.descripcion}
+            onChange={(event) => update("descripcion", event.target.value)}
             placeholder="Descripción del producto"
             rows="3"
           />
@@ -113,10 +117,10 @@ function ProductForm({ initial, onCancel, onSave, busy }) {
             Precio
             <input
               required
-              min="0"
+              min="0.01"
               step="0.01"
               type="number"
-              value={form.precio ?? ""}
+              value={form.precio}
               onChange={(event) => update("precio", event.target.value)}
             />
           </label>
@@ -128,9 +132,51 @@ function ProductForm({ initial, onCancel, onSave, busy }) {
               min="0"
               step="1"
               type="number"
-              value={form.stock ?? ""}
+              value={form.stock}
               onChange={(event) => update("stock", event.target.value)}
             />
+          </label>
+        </div>
+
+        <div className="form-grid">
+          <label>
+            Categoría
+            <select
+              required
+              value={form.categoriaId}
+              onChange={(event) => update("categoriaId", event.target.value)}
+            >
+              <option value="">
+                {categories.length === 0
+                  ? "No hay categorías (créalas primero)"
+                  : "Selecciona una categoría"}
+              </option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Marca
+            <select
+              required
+              value={form.marcaId}
+              onChange={(event) => update("marcaId", event.target.value)}
+            >
+              <option value="">
+                {brands.length === 0
+                  ? "No hay marcas (créalas primero)"
+                  : "Selecciona una marca"}
+              </option>
+              {brands.map((brand) => (
+                <option key={brand.id} value={brand.id}>
+                  {brand.nombre}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
 
@@ -156,6 +202,75 @@ function ProductForm({ initial, onCancel, onSave, busy }) {
   );
 }
 
+// ---------------------------------------------------------------
+// Formulario simple (solo nombre) para categorías y marcas
+// ---------------------------------------------------------------
+function NameForm({ eyebrow, title, label, placeholder, onCancel, onSave, busy }) {
+  const [nombre, setNombre] = useState("");
+
+  function submit(event) {
+    event.preventDefault();
+    onSave({ nombre: nombre.trim() });
+  }
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCancel();
+      }}
+    >
+      <form className="modal" onSubmit={submit}>
+        <div className="modal-heading">
+          <div>
+            <p className="eyebrow">{eyebrow}</p>
+            <h2>{title}</h2>
+            <p className="muted">Escribe el nombre para registrarlo.</p>
+          </div>
+
+          <button
+            className="icon-button"
+            type="button"
+            onClick={onCancel}
+            aria-label="Cerrar"
+          >
+            <X size={19} />
+          </button>
+        </div>
+
+        <label>
+          {label}
+          <input
+            required
+            autoFocus
+            value={nombre}
+            onChange={(event) => setNombre(event.target.value)}
+            placeholder={placeholder}
+          />
+        </label>
+
+        <div className="modal-actions">
+          <button
+            className="button button-light"
+            type="button"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+
+          <button
+            className="button button-primary"
+            disabled={busy}
+            type="submit"
+          >
+            {busy ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function App() {
   // Sesión
   const [token, setToken] = useState(
@@ -173,74 +288,125 @@ export default function App() {
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
 
-  // Productos y estado de la interfaz
+  // Datos
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+
+  // Interfaz
+  const [section, setSection] = useState("productos"); // productos | categorias | marcas
   const [query, setQuery] = useState("");
-  const [modal, setModal] = useState(null);
+  const [modal, setModal] = useState(null); // null | "producto" | "categoria" | "marca"
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const name = product.nombre ?? product.name ?? "";
-      const description =
-        product.descripcion ?? product.description ?? "";
-
-      return `${name} ${description}`
+    const q = query.toLowerCase();
+    return products.filter((product) =>
+      `${product.nombre ?? ""} ${product.categoria ?? ""} ${product.marca ?? ""}`
         .toLowerCase()
-        .includes(query.toLowerCase());
-    });
+        .includes(q)
+    );
   }, [products, query]);
 
+  const filteredCategories = useMemo(
+    () =>
+      categories.filter((c) =>
+        (c.nombre ?? "").toLowerCase().includes(query.toLowerCase())
+      ),
+    [categories, query]
+  );
+
+  const filteredBrands = useMemo(
+    () =>
+      brands.filter((b) =>
+        (b.nombre ?? "").toLowerCase().includes(query.toLowerCase())
+      ),
+    [brands, query]
+  );
+
   const totalStock = products.reduce(
-    (sum, product) =>
-      sum + Number(product.stock ?? product.cantidad ?? 0),
+    (sum, product) => sum + Number(product.stock ?? 0),
     0
   );
 
   const totalValue = products.reduce(
     (sum, product) =>
-      sum +
-      Number(product.precio ?? product.price ?? 0) *
-        Number(product.stock ?? product.cantidad ?? 0),
+      sum + Number(product.precio ?? 0) * Number(product.stock ?? 0),
     0
   );
 
   const lowStock = products.filter(
-    (product) =>
-      Number(product.stock ?? product.cantidad ?? 0) <= 5
+    (product) => Number(product.stock ?? 0) <= 5
   ).length;
 
-  // Cargar productos desde la API
+  // ------------------------- Cargas GET -------------------------
   async function loadProducts(currentToken = token) {
     setLoading(true);
     setError("");
-
     try {
-      const data = await apiRequest(PRODUCTS_ENDPOINT, {
-        token: currentToken,
-      });
-
-      setProducts(normalizeProducts(data));
+      const data = await apiRequest(PRODUCTS_ENDPOINT, { token: currentToken });
+      setProducts(normalizeList(data));
     } catch (e) {
-      setError(
-        `No se pudieron cargar los productos: ${e.message}. ` +
-        "Revisa el endpoint de productos y la configuración CORS."
-      );
+      setError(`No se pudieron cargar los productos: ${e.message}`);
     } finally {
       setLoading(false);
     }
   }
 
+  async function loadCategories(currentToken = token) {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiRequest(CATEGORIES_ENDPOINT, {
+        token: currentToken,
+      });
+      setCategories(normalizeList(data));
+    } catch (e) {
+      setError(`No se pudieron cargar las categorías: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadBrands(currentToken = token) {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiRequest(BRANDS_ENDPOINT, { token: currentToken });
+      setBrands(normalizeList(data));
+    } catch (e) {
+      setError(`No se pudieron cargar las marcas: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function reloadCurrent() {
+    if (section === "productos") loadProducts();
+    else if (section === "categorias") loadCategories();
+    else loadBrands();
+  }
+
+  // Al iniciar sesión se cargan las tres listas
   useEffect(() => {
     if (token) {
       loadProducts(token);
+      loadCategories(token);
+      loadBrands(token);
     }
   }, [token]);
 
-  // Iniciar sesión
+  function changeSection(next) {
+    setSection(next);
+    setQuery("");
+    setError("");
+    setNotice("");
+  }
+
+  // ------------------------- Auth -------------------------
   async function login(event) {
     event.preventDefault();
     setBusy(true);
@@ -257,9 +423,7 @@ export default function App() {
       });
 
       if (!result?.token) {
-        throw new Error(
-          "La respuesta no contiene el token esperado."
-        );
+        throw new Error("La respuesta no contiene el token esperado.");
       }
 
       sessionStorage.setItem("gestor_token", result.token);
@@ -275,7 +439,6 @@ export default function App() {
     }
   }
 
-  // Registrar una cuenta nueva
   async function register(event) {
     event.preventDefault();
     setBusy(true);
@@ -292,9 +455,7 @@ export default function App() {
       });
 
       if (!result?.token) {
-        throw new Error(
-          "El registro respondió, pero no devolvió un token."
-        );
+        throw new Error("El registro respondió, pero no devolvió un token.");
       }
 
       sessionStorage.setItem("gestor_token", result.token);
@@ -310,7 +471,6 @@ export default function App() {
     }
   }
 
-  // Cerrar sesión
   function logout() {
     sessionStorage.removeItem("gestor_token");
     sessionStorage.removeItem("gestor_user");
@@ -318,6 +478,11 @@ export default function App() {
     setToken("");
     setUsername("");
     setProducts([]);
+    setCategories([]);
+    setBrands([]);
+    setSection("productos");
+    setModal(null);
+    setQuery("");
     setError("");
     setNotice("");
     setRegisterMode(false);
@@ -327,34 +492,21 @@ export default function App() {
     setRegisterPassword("");
   }
 
-  // Crear o actualizar un producto
+  // ------------------------- POST (solo creación) -------------------------
   async function saveProduct(product) {
     setBusy(true);
     setError("");
     setNotice("");
 
     try {
-      const editing = Boolean(modal?.product);
-      const id =
-        modal?.product?.id ?? modal?.product?.idProducto;
-
-      const path = editing
-        ? `${PRODUCTS_ENDPOINT}/${id}`
-        : PRODUCTS_ENDPOINT;
-
-      await apiRequest(path, {
-        method: editing ? "PUT" : "POST",
+      await apiRequest(PRODUCTS_ENDPOINT, {
+        method: "POST",
         token,
         body: JSON.stringify(product),
       });
 
       setModal(null);
-      setNotice(
-        editing
-          ? "Producto actualizado correctamente."
-          : "Producto creado correctamente."
-      );
-
+      setNotice("Producto creado correctamente.");
       await loadProducts();
     } catch (e) {
       setError(`No se pudo guardar el producto: ${e.message}`);
@@ -363,37 +515,51 @@ export default function App() {
     }
   }
 
-  // Eliminar un producto
-  async function deleteProduct(product) {
-    const id = product.id ?? product.idProducto;
-    const name = product.nombre ?? product.name ?? "este producto";
-
-    if (id == null) {
-      setError("No se encontró el identificador del producto.");
-      return;
-    }
-
-    if (!window.confirm(`¿Seguro que quieres eliminar "${name}"?`)) {
-      return;
-    }
-
+  async function saveCategory(body) {
+    setBusy(true);
     setError("");
     setNotice("");
 
     try {
-      await apiRequest(`${PRODUCTS_ENDPOINT}/${id}`, {
-        method: "DELETE",
+      await apiRequest(CATEGORIES_ENDPOINT, {
+        method: "POST",
         token,
+        body: JSON.stringify(body),
       });
 
-      setNotice("Producto eliminado correctamente.");
-      await loadProducts();
+      setModal(null);
+      setNotice("Categoría creada correctamente.");
+      await loadCategories();
     } catch (e) {
-      setError(`No se pudo eliminar el producto: ${e.message}`);
+      setError(`No se pudo guardar la categoría: ${e.message}`);
+    } finally {
+      setBusy(false);
     }
   }
 
-  // Pantalla de inicio de sesión y registro
+  async function saveBrand(body) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await apiRequest(BRANDS_ENDPOINT, {
+        method: "POST",
+        token,
+        body: JSON.stringify(body),
+      });
+
+      setModal(null);
+      setNotice("Marca creada correctamente.");
+      await loadBrands();
+    } catch (e) {
+      setError(`No se pudo guardar la marca: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // ------------------------- Pantalla de login / registro -------------------------
   if (!token) {
     return (
       <main className="login-page">
@@ -406,9 +572,7 @@ export default function App() {
           </div>
 
           <div className="login-promo">
-            <span className="pill pill-dark">
-              GESTIÓN INTELIGENTE
-            </span>
+            <span className="pill pill-dark">GESTIÓN INTELIGENTE</span>
 
             <h1>
               Todo tu inventario,
@@ -417,9 +581,8 @@ export default function App() {
             </h1>
 
             <p>
-              Administra tus productos con claridad. Consulta
-              existencias, actualiza información y mantén tu
-              catálogo organizado.
+              Administra tus productos con claridad. Consulta existencias,
+              actualiza información y mantén tu catálogo organizado.
             </p>
 
             <div className="visual-stat">
@@ -458,14 +621,10 @@ export default function App() {
             </div>
 
             <p className="eyebrow">
-              {registerMode
-                ? "ÚNETE A STOCKWISE"
-                : "BIENVENIDO DE NUEVO"}
+              {registerMode ? "ÚNETE A STOCKWISE" : "BIENVENIDO DE NUEVO"}
             </p>
 
-            <h2>
-              {registerMode ? "Crear cuenta" : "Inicia sesión"}
-            </h2>
+            <h2>{registerMode ? "Crear cuenta" : "Inicia sesión"}</h2>
 
             <p className="muted">
               {registerMode
@@ -473,17 +632,9 @@ export default function App() {
                 : "Ingresa tus credenciales para acceder al panel."}
             </p>
 
-            {error && (
-              <div className="alert alert-error">
-                {error}
-              </div>
-            )}
+            {error && <div className="alert alert-error">{error}</div>}
 
-            {notice && (
-              <div className="alert alert-success">
-                {notice}
-              </div>
-            )}
+            {notice && <div className="alert alert-success">{notice}</div>}
 
             <label>
               Correo electrónico
@@ -507,14 +658,10 @@ export default function App() {
               Contraseña
               <input
                 type="password"
-                autoComplete={
-                  registerMode ? "new-password" : "current-password"
-                }
+                autoComplete={registerMode ? "new-password" : "current-password"}
                 minLength={registerMode ? 6 : undefined}
                 required
-                value={
-                  registerMode ? registerPassword : loginPassword
-                }
+                value={registerMode ? registerPassword : loginPassword}
                 onChange={(event) => {
                   if (registerMode) {
                     setRegisterPassword(event.target.value);
@@ -522,11 +669,7 @@ export default function App() {
                     setLoginPassword(event.target.value);
                   }
                 }}
-                placeholder={
-                  registerMode
-                    ? "Mínimo 6 caracteres"
-                    : "Tu contraseña"
-                }
+                placeholder={registerMode ? "Mínimo 6 caracteres" : "Tu contraseña"}
               />
             </label>
 
@@ -545,11 +688,7 @@ export default function App() {
             </button>
 
             <p className="register-link">
-              {registerMode
-                ? "¿Ya tienes una cuenta?"
-                : "¿No tienes una cuenta?"}
-              {" "}
-
+              {registerMode ? "¿Ya tienes una cuenta?" : "¿No tienes una cuenta?"}{" "}
               <button
                 type="button"
                 onClick={() => {
@@ -558,9 +697,7 @@ export default function App() {
                   setNotice("");
                 }}
               >
-                {registerMode
-                  ? "Inicia sesión"
-                  : "Regístrate aquí"}
+                {registerMode ? "Inicia sesión" : "Regístrate aquí"}
               </button>
             </p>
 
@@ -575,7 +712,100 @@ export default function App() {
     );
   }
 
-  // Panel principal de productos
+  // ------------------------- Textos según la sección -------------------------
+  const sectionInfo = {
+    productos: {
+      eyebrow: "INVENTARIO / PRODUCTOS",
+      title: "Gestor de productos",
+      newLabel: "Nuevo producto",
+      newModal: "producto",
+      searchPlaceholder: "Buscar producto...",
+    },
+    categorias: {
+      eyebrow: "INVENTARIO / CATEGORÍAS",
+      title: "Gestor de categorías",
+      newLabel: "Nueva categoría",
+      newModal: "categoria",
+      searchPlaceholder: "Buscar categoría...",
+    },
+    marcas: {
+      eyebrow: "INVENTARIO / MARCAS",
+      title: "Gestor de marcas",
+      newLabel: "Nueva marca",
+      newModal: "marca",
+      searchPlaceholder: "Buscar marca...",
+    },
+  }[section];
+
+  // Tabla sencilla (ID + Nombre) reutilizada por categorías y marcas
+  function renderSimpleTable(items, allItems, heading, singularPlural, icon) {
+    return (
+      <section className="table-card">
+        <div className="table-heading">
+          <div>
+            <h2>{heading}</h2>
+            <p className="muted">Consulta y registra nuevos elementos.</p>
+          </div>
+
+          <label className="search-box">
+            <Search size={17} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={sectionInfo.searchPlaceholder}
+            />
+          </label>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>NOMBRE</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="2" className="empty-state">
+                    Cargando...
+                  </td>
+                </tr>
+              ) : items.length === 0 ? (
+                <tr>
+                  <td colSpan="2" className="empty-state">
+                    <div className="empty-icon">{icon}</div>
+                    <strong>No hay {singularPlural} para mostrar</strong>
+                    <span>Registra la primera con el botón superior.</span>
+                  </td>
+                </tr>
+              ) : (
+                items.map((item, index) => (
+                  <tr key={item.id ?? index}>
+                    <td>{item.id}</td>
+                    <td>
+                      <strong>{item.nombre}</strong>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="table-foot">
+          <span>
+            Mostrando {items.length} de {allItems.length} {singularPlural}
+          </span>
+          <span>Gestión de inventario</span>
+        </div>
+      </section>
+    );
+  }
+
+  // ------------------------- Panel principal -------------------------
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -588,10 +818,34 @@ export default function App() {
 
         <p className="nav-caption">MENÚ PRINCIPAL</p>
 
-        <div className="nav-item nav-active">
+        <div
+          className={`nav-item ${section === "productos" ? "nav-active" : ""}`}
+          style={{ cursor: "pointer" }}
+          onClick={() => changeSection("productos")}
+        >
           <Package size={18} />
           Productos
-          <span className="nav-dot" />
+          {section === "productos" && <span className="nav-dot" />}
+        </div>
+
+        <div
+          className={`nav-item ${section === "categorias" ? "nav-active" : ""}`}
+          style={{ cursor: "pointer" }}
+          onClick={() => changeSection("categorias")}
+        >
+          <Tags size={18} />
+          Categorías
+          {section === "categorias" && <span className="nav-dot" />}
+        </div>
+
+        <div
+          className={`nav-item ${section === "marcas" ? "nav-active" : ""}`}
+          style={{ cursor: "pointer" }}
+          onClick={() => changeSection("marcas")}
+        >
+          <Tag size={18} />
+          Marcas
+          {section === "marcas" && <span className="nav-dot" />}
         </div>
 
         <div className="sidebar-bottom">
@@ -617,8 +871,8 @@ export default function App() {
       <main className="main-content">
         <header className="topbar">
           <div>
-            <p className="eyebrow">INVENTARIO / PRODUCTOS</p>
-            <h1>Gestor de productos</h1>
+            <p className="eyebrow">{sectionInfo.eyebrow}</p>
+            <h1>{sectionInfo.title}</h1>
           </div>
 
           <div className="topbar-actions">
@@ -627,10 +881,7 @@ export default function App() {
               Sesión activa
             </span>
 
-            <button
-              className="button button-light"
-              onClick={() => loadProducts()}
-            >
+            <button className="button button-light" onClick={reloadCurrent}>
               <RefreshCw size={16} />
               Actualizar
             </button>
@@ -641,10 +892,7 @@ export default function App() {
           <div className="alert alert-error">
             <AlertTriangle size={18} />
             <span>{error}</span>
-            <button
-              onClick={() => setError("")}
-              className="alert-close"
-            >
+            <button onClick={() => setError("")} className="alert-close">
               <X size={16} />
             </button>
           </div>
@@ -654,10 +902,7 @@ export default function App() {
           <div className="alert alert-success">
             <CheckCircle2 size={18} />
             <span>{notice}</span>
-            <button
-              onClick={() => setNotice("")}
-              className="alert-close"
-            >
+            <button onClick={() => setNotice("")} className="alert-close">
               <X size={16} />
             </button>
           </div>
@@ -665,218 +910,207 @@ export default function App() {
 
         <section className="welcome-row">
           <div>
-            <h2>Resumen de inventario</h2>
+            <h2>
+              {section === "productos"
+                ? "Resumen de inventario"
+                : section === "categorias"
+                  ? "Categorías"
+                  : "Marcas"}
+            </h2>
             <p className="muted">
-              Aquí tienes una vista general de tu catálogo.
+              {section === "productos"
+                ? "Aquí tienes una vista general de tu catálogo."
+                : "Consulta y registra los elementos disponibles."}
             </p>
           </div>
 
           <button
             className="button button-primary"
-            onClick={() => setModal({ product: null })}
+            onClick={() => setModal(sectionInfo.newModal)}
           >
             <Plus size={18} />
-            Nuevo producto
+            {sectionInfo.newLabel}
           </button>
         </section>
 
-        <section className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-card-top">
-              <span>Total de productos</span>
-              <span className="stat-icon purple">
-                <Boxes size={19} />
-              </span>
-            </div>
-            <strong>{products.length}</strong>
-            <small>Referencias en el catálogo</small>
-          </div>
+        {section === "productos" && (
+          <>
+            <section className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-card-top">
+                  <span>Total de productos</span>
+                  <span className="stat-icon purple">
+                    <Boxes size={19} />
+                  </span>
+                </div>
+                <strong>{products.length}</strong>
+                <small>Referencias en el catálogo</small>
+              </div>
 
-          <div className="stat-card">
-            <div className="stat-card-top">
-              <span>Unidades en stock</span>
-              <span className="stat-icon blue">
-                <Package size={19} />
-              </span>
-            </div>
-            <strong>{totalStock.toLocaleString("es-CO")}</strong>
-            <small>Unidades registradas</small>
-          </div>
+              <div className="stat-card">
+                <div className="stat-card-top">
+                  <span>Unidades en stock</span>
+                  <span className="stat-icon blue">
+                    <Package size={19} />
+                  </span>
+                </div>
+                <strong>{totalStock.toLocaleString("es-CO")}</strong>
+                <small>Unidades registradas</small>
+              </div>
 
-          <div className="stat-card">
-            <div className="stat-card-top">
-              <span>Valor del inventario</span>
-              <span className="stat-icon green">
-                <CircleDollarSign size={19} />
-              </span>
-            </div>
-            <strong>
-              {totalValue.toLocaleString("es-CO", {
-                style: "currency",
-                currency: "COP",
-                maximumFractionDigits: 0,
-              })}
-            </strong>
-            <small>Precio por unidades</small>
-          </div>
+              <div className="stat-card">
+                <div className="stat-card-top">
+                  <span>Valor del inventario</span>
+                  <span className="stat-icon green">
+                    <CircleDollarSign size={19} />
+                  </span>
+                </div>
+                <strong>
+                  {totalValue.toLocaleString("es-CO", {
+                    style: "currency",
+                    currency: "COP",
+                    maximumFractionDigits: 0,
+                  })}
+                </strong>
+                <small>Precio por unidades</small>
+              </div>
 
-          <div className="stat-card">
-            <div className="stat-card-top">
-              <span>Stock bajo</span>
-              <span className="stat-icon orange">
-                <AlertTriangle size={19} />
-              </span>
-            </div>
-            <strong>{lowStock}</strong>
-            <small>Productos con 5 unidades o menos</small>
-          </div>
-        </section>
+              <div className="stat-card">
+                <div className="stat-card-top">
+                  <span>Stock bajo</span>
+                  <span className="stat-icon orange">
+                    <AlertTriangle size={19} />
+                  </span>
+                </div>
+                <strong>{lowStock}</strong>
+                <small>Productos con 5 unidades o menos</small>
+              </div>
+            </section>
 
-        <section className="table-card">
-          <div className="table-heading">
-            <div>
-              <h2>Todos los productos</h2>
-              <p className="muted">
-                Consulta y administra los registros de tu inventario.
-              </p>
-            </div>
+            <section className="table-card">
+              <div className="table-heading">
+                <div>
+                  <h2>Todos los productos</h2>
+                  <p className="muted">Consulta los registros de tu inventario.</p>
+                </div>
 
-            <label className="search-box">
-              <Search size={17} />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar producto..."
-              />
-            </label>
-          </div>
+                <label className="search-box">
+                  <Search size={17} />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={sectionInfo.searchPlaceholder}
+                  />
+                </label>
+              </div>
 
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>PRODUCTO</th>
-                  <th>DESCRIPCIÓN</th>
-                  <th>PRECIO</th>
-                  <th>STOCK</th>
-                  <th>ESTADO</th>
-                  <th>ACCIONES</th>
-                </tr>
-              </thead>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>NOMBRE</th>
+                      <th>PRECIO</th>
+                      <th>STOCK</th>
+                      <th>CATEGORÍA</th>
+                      <th>MARCA</th>
+                    </tr>
+                  </thead>
 
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" className="empty-state">
-                      Cargando productos...
-                    </td>
-                  </tr>
-                ) : filteredProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="empty-state">
-                      <div className="empty-icon">
-                        <Package size={23} />
-                      </div>
-                      <strong>No hay productos para mostrar</strong>
-                      <span>
-                        Si la API respondió correctamente, crea tu primer producto.
-                      </span>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredProducts.map((product, index) => {
-                    const stock = Number(
-                      product.stock ?? product.cantidad ?? 0
-                    );
-
-                    const name =
-                      product.nombre ??
-                      product.name ??
-                      `Producto ${index + 1}`;
-
-                    const price = Number(
-                      product.precio ?? product.price ?? 0
-                    );
-
-                    return (
-                      <tr
-                        key={
-                          product.id ??
-                          product.idProducto ??
-                          index
-                        }
-                      >
-                        <td>
-                          <div className="product-name">
-                            <span className="product-thumb">
-                              <Package size={18} />
-                            </span>
-                            <strong>{name}</strong>
-                          </div>
-                        </td>
-
-                        <td className="description-cell">
-                          {product.descripcion ??
-                            product.description ??
-                            "—"}
-                        </td>
-
-                        <td className="price-cell">
-                          {price.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                          })}
-                        </td>
-
-                        <td>{stock}</td>
-
-                        <td>
-                          <span
-                            className={`stock-badge ${
-                              stock <= 5 ? "stock-low" : "stock-ok"
-                            }`}
-                          >
-                            <span />
-                            {stock <= 5 ? "Stock bajo" : "Disponible"}
-                          </span>
-                        </td>
-
-                        <td>
-                          <div className="row-actions">
-                            <button
-                              className="icon-button edit-action"
-                              title="Editar"
-                              onClick={() =>
-                                setModal({ product })
-                              }
-                            >
-                              <Pencil size={16} />
-                            </button>
-
-                            <button
-                              className="icon-button delete-action"
-                              title="Eliminar"
-                              onClick={() => deleteProduct(product)}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="6" className="empty-state">
+                          Cargando productos...
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                    ) : filteredProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="empty-state">
+                          <div className="empty-icon">
+                            <Package size={23} />
+                          </div>
+                          <strong>No hay productos para mostrar</strong>
+                          <span>
+                            Si la API respondió correctamente, crea tu primer
+                            producto.
+                          </span>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredProducts.map((product, index) => {
+                        const stock = Number(product.stock ?? 0);
+                        const price = Number(product.precio ?? 0);
 
-          <div className="table-foot">
-            <span>
-              Mostrando {filteredProducts.length} de {products.length} productos
-            </span>
-            <span>Gestión de inventario</span>
-          </div>
-        </section>
+                        return (
+                          <tr key={product.id ?? index}>
+                            <td>{product.id}</td>
+
+                            <td>
+                              <div className="product-name">
+                                <span className="product-thumb">
+                                  <Package size={18} />
+                                </span>
+                                <strong>{product.nombre}</strong>
+                              </div>
+                            </td>
+
+                            <td className="price-cell">
+                              {price.toLocaleString("es-CO", {
+                                style: "currency",
+                                currency: "COP",
+                              })}
+                            </td>
+
+                            <td>
+                              <span
+                                className={`stock-badge ${
+                                  stock <= 5 ? "stock-low" : "stock-ok"
+                                }`}
+                              >
+                                <span />
+                                {stock}
+                              </span>
+                            </td>
+
+                            <td>{product.categoria ?? "—"}</td>
+                            <td>{product.marca ?? "—"}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="table-foot">
+                <span>
+                  Mostrando {filteredProducts.length} de {products.length}{" "}
+                  productos
+                </span>
+                <span>Gestión de inventario</span>
+              </div>
+            </section>
+          </>
+        )}
+
+        {section === "categorias" &&
+          renderSimpleTable(
+            filteredCategories,
+            categories,
+            "Todas las categorías",
+            "categorías",
+            <Tags size={23} />
+          )}
+
+        {section === "marcas" &&
+          renderSimpleTable(
+            filteredBrands,
+            brands,
+            "Todas las marcas",
+            "marcas",
+            <Tag size={23} />
+          )}
 
         <footer className="page-footer">
           Stockwise · Gestor de productos
@@ -884,40 +1118,37 @@ export default function App() {
         </footer>
       </main>
 
-      {modal && (
+      {modal === "producto" && (
         <ProductForm
-          key={
-            modal.product?.id ??
-            modal.product?.idProducto ??
-            "nuevo"
-          }
-          initial={
-            modal.product
-              ? {
-                  ...emptyProduct,
-                  ...modal.product,
-                  nombre:
-                    modal.product.nombre ??
-                    modal.product.name ??
-                    "",
-                  descripcion:
-                    modal.product.descripcion ??
-                    modal.product.description ??
-                    "",
-                  precio:
-                    modal.product.precio ??
-                    modal.product.price ??
-                    "",
-                  stock:
-                    modal.product.stock ??
-                    modal.product.cantidad ??
-                    "",
-                }
-              : emptyProduct
-          }
+          categories={categories}
+          brands={brands}
           busy={busy}
           onCancel={() => setModal(null)}
           onSave={saveProduct}
+        />
+      )}
+
+      {modal === "categoria" && (
+        <NameForm
+          eyebrow="CATEGORÍAS"
+          title="Nueva categoría"
+          label="Nombre de la categoría"
+          placeholder="Ej. Suplementos"
+          busy={busy}
+          onCancel={() => setModal(null)}
+          onSave={saveCategory}
+        />
+      )}
+
+      {modal === "marca" && (
+        <NameForm
+          eyebrow="MARCAS"
+          title="Nueva marca"
+          label="Nombre de la marca"
+          placeholder="Ej. Marca deportiva"
+          busy={busy}
+          onCancel={() => setModal(null)}
+          onSave={saveBrand}
         />
       )}
     </div>

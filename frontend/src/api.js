@@ -5,6 +5,12 @@ const API_URL = (
 export const PRODUCTS_ENDPOINT =
   import.meta.env.VITE_PRODUCTS_ENDPOINT || "/api/productos";
 
+export const CATEGORIES_ENDPOINT =
+  import.meta.env.VITE_CATEGORIES_ENDPOINT || "/api/categorias";
+
+export const BRANDS_ENDPOINT =
+  import.meta.env.VITE_BRANDS_ENDPOINT || "/api/marcas";
+
 export async function apiRequest(path, { token, ...options } = {}) {
   const headers = {
     ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -18,6 +24,7 @@ export async function apiRequest(path, { token, ...options } = {}) {
   });
 
   const raw = await response.text();
+
   let data = null;
 
   try {
@@ -28,7 +35,8 @@ export async function apiRequest(path, { token, ...options } = {}) {
 
   if (!response.ok) {
     const message =
-      (data && typeof data === "object" &&
+      (data &&
+        typeof data === "object" &&
         (data.message || data.error || data.detail)) ||
       (typeof data === "string" && data) ||
       `Error HTTP ${response.status}`;
