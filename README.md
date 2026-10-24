@@ -35,6 +35,7 @@ Proyecto 03 — Infraestructura y Seguridad Computacional.
    Red interna: gestor-net
    Volúmenes:  mysql-data (datos de MySQL)
                api-logs   (logs de la API)
+               db-backups (copias de seguridad de la BD)
 ```
 
 - **db**: MySQL 8.4, almacena los datos de la aplicación.
@@ -90,6 +91,7 @@ Proyecto 03 — Infraestructura y Seguridad Computacional.
 |--------------|-------------------------------------------|
 | `mysql-data` | Persistencia de los datos de MySQL        |
 | `api-logs`   | Logs generados por la aplicación (`/app/logs`) |
+| `db-backups` | Copias de seguridad de la base de datos (`/backups`) |
 
 ## Red
 
@@ -109,6 +111,10 @@ Enlace de la imagen en Docker Hub: https://hub.docker.com/r/jhonolivera/gestor-p
 docker pull jhonolivera/gestor-productos:1.0
 ```
 
+## Repositorio en GitHub
+
+https://github.com/JhonOlivera/proyecto03-docker-compose-gestor-productos
+
 ## Autoría
 
 Jhon Olivera — jhon.olivera@estudiantesunibague.edu.co
@@ -116,3 +122,116 @@ Yaritxa Duarte Urueña- yaritxa.duarte@estudiantesunibague.edu.co
 Ana Maria Tique Manrique- ana.tique1@estudiantesunibague..edu.co
 Juan Andres Bejarano Garzón- juan.bejarano1@estudiantesunibague.edu.co
 Janner Stiven Torres Carvajal-janner.torres@estudiantesunibague.edu.co
+
+## Guía de despliegue paso a paso (para probar el proyecto)
+
+Esta guía explica cómo clonar, levantar y probar el proyecto desde cero en Windows usando PowerShell.
+
+### 1. Requisitos
+
+- Docker Desktop instalado y en ejecución (en Windows, con WSL2 activo).
+- Git instalado.
+
+### 2. Clonar el repositorio
+
+```powershell
+git clone https://github.com/JhonOlivera/proyecto03-docker-compose-gestor-productos.git
+cd proyecto03-docker-compose-gestor-productos
+```
+
+### 3. Crear el archivo de variables de entorno
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Edita el archivo `.env` y completa:
+
+- `DB_PASSWORD`: cualquier contraseña.
+- `JWT_SECRET`: una cadena de al menos 32 caracteres.
+- `DOCKERHUB_USER`: debe quedar como `jhonolivera`.
+
+> El archivo `.env` contiene información sensible y **no se sube a GitHub** (está excluido en `.gitignore`).
+
+### 4. Levantar los servicios
+
+Hay dos opciones:
+
+- **Opción A (rápida)** — descarga la imagen ya publicada en Docker Hub:
+
+  ```powershell
+  docker compose -f docker-compose.entrega.yml up -d
+  ```
+
+- **Opción B (construye la imagen localmente)** — tarda más porque compila el proyecto:
+
+  ```powershell
+  docker compose up -d --build
+  ```
+
+### 5. Verificar que todo esté arriba
+
+```powershell
+docker compose ps
+```
+
+Debe mostrar `db` en estado `healthy`, y `api` y `adminer` en estado `Up`.
+
+### 6. Probar la API con Swagger
+
+Abre http://localhost:8080/swagger-ui/index.html
+
+Desde `auth-controller`, registra un usuario y luego inicia sesión (login) con ese mismo usuario.
+
+### 7. Entrar a Adminer
+
+Abre http://localhost:8081 e inicia sesión con:
+
+- Sistema: `MySQL`
+- Servidor: `db`
+- Usuario: `root`
+- Contraseña: la definida en `DB_PASSWORD` en el `.env`
+- Base de datos: `tienda2`
+
+### 8. Dar rol ADMIN al usuario
+
+En Adminer, abre la tabla `usuario` y edita el campo `rol` del usuario que registraste, cambiándolo a `ADMIN`.
+
+Vuelve a Swagger y vuelve a hacer login con ese usuario para obtener un token actualizado. Copia el token.
+
+### 9. Autorizar y probar endpoints protegidos
+
+En Swagger, haz clic en el botón **Authorize** y pega el token copiado.
+
+Con el usuario ya como ADMIN, crea una categoría, una marca y un producto (`POST /api/productos` requiere rol ADMIN) y luego consulta los productos con `GET /api/productos`.
+
+### 10. Probar la persistencia de los volúmenes
+
+```powershell
+docker compose down
+docker compose up -d
+```
+
+Verifica en Swagger (`GET /api/productos`) que el producto creado sigue existiendo.
+
+> `docker compose down -v` sí borra los datos, porque elimina los volúmenes.
+
+### 11. Probar el volumen de respaldos
+
+```powershell
+docker compose exec db sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" tienda2 > /backups/tienda2.sql'
+docker compose exec db ls -l /backups
+```
+
+### 12. Apagar el proyecto
+
+```powershell
+docker compose down
+```
+
+### 13. Problemas comunes
+
+- **Puerto 8080 u 8081 ocupado**: cambia el puerto de la izquierda en la sección `ports` del archivo `docker-compose.yml` (por ejemplo, `"8090:8080"`).
+- **Docker Desktop apagado**: ábrelo y espera a que esté completamente iniciado antes de ejecutar `docker compose`.
+- **Adminer no conecta**: verifica que la contraseña usada en Adminer sea exactamente la misma que `DB_PASSWORD` en el `.env`.
+

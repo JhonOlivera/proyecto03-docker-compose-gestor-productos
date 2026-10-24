@@ -7,6 +7,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
+      - db-backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD"]
       interval: 5s
@@ -59,6 +60,7 @@ services:
 volumes:
   mysql-data:
   api-logs:
+  db-backups:
 
 networks:
   gestor-net:
