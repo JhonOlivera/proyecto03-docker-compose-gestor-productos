@@ -32,6 +32,13 @@ services:
     networks:
       - gestor-net
 
+  frontend:
+    image: ${DOCKERHUB_USER}/gestor-productos-frontend:1.0
+    ports:
+      - "5173:80"
+    networks:
+      - gestor-net
+
   adminer:
     image: adminer
     ports:

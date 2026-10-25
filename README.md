@@ -14,23 +14,24 @@ API REST en Spring Boot (Java 25) para la gestión de productos, con autenticaci
 
 Proyecto 03 — Infraestructura y Seguridad Computacional.
 
-## Arquitectura (3 servicios)
+## Arquitectura (4 servicios)
 
 ```
-                    ┌─────────────────────┐
-                    │      Adminer        │
-                    │   (puerto 8081)     │
-                    └──────────┬───────────┘
-                               │
-┌──────────────┐    JDBC       │
-│     api      │◄──────────────┤
-│ (puerto 8080)│               │
-│  Spring Boot │               ▼
-│   + JWT      │        ┌─────────────┐
-└──────┬───────┘        │     db      │
-       │   JDBC         │   MySQL 8.4 │
-       └───────────────►│             │
-                         └─────────────┘
+┌──────────────┐        ┌─────────────────────┐
+│   frontend   │  HTTP  │      Adminer        │
+│ (puerto 5173)│        │   (puerto 8081)     │
+└──────┬───────┘        └──────────┬───────────┘
+       │ REST                      │
+       ▼                           │
+┌──────────────┐    JDBC           │
+│     api      │◄──────────────────┤
+│ (puerto 8080)│                   │
+│  Spring Boot │                   ▼
+│   + JWT      │            ┌─────────────┐
+└──────┬───────┘            │     db      │
+       │   JDBC             │   MySQL 8.4 │
+       └───────────────────►│             │
+                             └─────────────┘
 
    Red interna: gestor-net
    Volúmenes:  mysql-data (datos de MySQL)
@@ -40,6 +41,7 @@ Proyecto 03 — Infraestructura y Seguridad Computacional.
 
 - **db**: MySQL 8.4, almacena los datos de la aplicación.
 - **api**: API Spring Boot con seguridad JWT, expone la documentación Swagger/OpenAPI.
+- **frontend**: SPA en React + Vite, servida por nginx, consume la API REST.
 - **adminer**: cliente web para administrar la base de datos MySQL.
 
 ## Requisitos
@@ -79,9 +81,11 @@ Proyecto 03 — Infraestructura y Seguridad Computacional.
 
 | Servicio | Puerto host | Descripción              |
 |----------|-------------|---------------------------|
+| frontend | `5173`      | Interfaz web (SPA)         |
 | api      | `8080`      | API REST + Swagger UI      |
 | adminer  | `8081`      | Administración de la BD    |
 
+- Frontend: http://localhost:5173
 - Documentación interactiva (Swagger UI): http://localhost:8080/swagger-ui.html
 - Adminer: http://localhost:8081 (servidor: `db`, usuario: `root`, contraseña: la definida en `DB_PASSWORD`)
 
@@ -177,13 +181,17 @@ docker compose ps
 
 Debe mostrar `db` en estado `healthy`, y `api` y `adminer` en estado `Up`.
 
-### 6. Probar la API con Swagger
+### 6. Abrir el frontend
+
+Abre http://localhost:5173 para usar la interfaz web del gestor de productos.
+
+### 7. Probar la API con Swagger
 
 Abre http://localhost:8080/swagger-ui/index.html
 
 Desde `auth-controller`, registra un usuario y luego inicia sesión (login) con ese mismo usuario.
 
-### 7. Entrar a Adminer
+### 8. Entrar a Adminer
 
 Abre http://localhost:8081 e inicia sesión con:
 
@@ -193,19 +201,19 @@ Abre http://localhost:8081 e inicia sesión con:
 - Contraseña: la definida en `DB_PASSWORD` en el `.env`
 - Base de datos: `tienda2`
 
-### 8. Dar rol ADMIN al usuario
+### 9. Dar rol ADMIN al usuario
 
 En Adminer, abre la tabla `usuario` y edita el campo `rol` del usuario que registraste, cambiándolo a `ADMIN`.
 
 Vuelve a Swagger y vuelve a hacer login con ese usuario para obtener un token actualizado. Copia el token.
 
-### 9. Autorizar y probar endpoints protegidos
+### 10. Autorizar y probar endpoints protegidos
 
 En Swagger, haz clic en el botón **Authorize** y pega el token copiado.
 
 Con el usuario ya como ADMIN, crea una categoría, una marca y un producto (`POST /api/productos` requiere rol ADMIN) y luego consulta los productos con `GET /api/productos`.
 
-### 10. Probar la persistencia de los volúmenes
+### 11. Probar la persistencia de los volúmenes
 
 ```powershell
 docker compose down
@@ -216,22 +224,32 @@ Verifica en Swagger (`GET /api/productos`) que el producto creado sigue existien
 
 > `docker compose down -v` sí borra los datos, porque elimina los volúmenes.
 
-### 11. Probar el volumen de respaldos
+### 12. Probar el volumen de respaldos
 
 ```powershell
 docker compose exec db sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" tienda2 > /backups/tienda2.sql'
 docker compose exec db ls -l /backups
 ```
 
-### 12. Apagar el proyecto
+### 13. Apagar el proyecto
 
 ```powershell
 docker compose down
 ```
 
-### 13. Problemas comunes
+### 14. Problemas comunes
 
 - **Puerto 8080 u 8081 ocupado**: cambia el puerto de la izquierda en la sección `ports` del archivo `docker-compose.yml` (por ejemplo, `"8090:8080"`).
 - **Docker Desktop apagado**: ábrelo y espera a que esté completamente iniciado antes de ejecutar `docker compose`.
 - **Adminer no conecta**: verifica que la contraseña usada en Adminer sea exactamente la misma que `DB_PASSWORD` en el `.env`.
+
+## Registro de pruebas del equipo
+
+| Integrante | Fecha | Resultado |
+|------------|-------|-----------|
+| Jhon Edwin Olivera Duarte | | |
+| Yaritxa Duarte Urueña | | |
+| Juan Andres Bejarano Garzón | | |
+| Ana Maria Tique Manrique | | |
+| Janner Torres Carvajal | | |
 
