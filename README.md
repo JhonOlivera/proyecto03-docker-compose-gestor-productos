@@ -243,13 +243,5 @@ docker compose down
 - **Docker Desktop apagado**: ábrelo y espera a que esté completamente iniciado antes de ejecutar `docker compose`.
 - **Adminer no conecta**: verifica que la contraseña usada en Adminer sea exactamente la misma que `DB_PASSWORD` en el `.env`.
 
-## Registro de pruebas del equipo
 
-| Integrante | Fecha | Resultado |
-|------------|-------|-----------|
-| Jhon Edwin Olivera Duarte | | |
-| Yaritxa Duarte Urueña | | |
-| Juan Andres Bejarano Garzón | | |
-| Ana Maria Tique Manrique | | |
-| Janner Torres Carvajal | | |
 
